@@ -7,7 +7,7 @@ class LaporanPage extends StatefulWidget {
 }
 
 class _LaporanPageState extends State<LaporanPage> {
-  List<dynamic> reports = [];
+  Map<String, dynamic> reports = {};
   bool isLoading = true;
 
   @override
@@ -18,7 +18,18 @@ class _LaporanPageState extends State<LaporanPage> {
 
   void fetchReports() async {
     try {
-      final data = await ApiService().get('laporan');
+      // Simulasi data laporan karena endpoint belum dibuat
+      await Future.delayed(Duration(seconds: 1));
+      final data = {
+        'total_penghuni': 15,
+        'total_pendapatan': 12000000,
+        'kamar_tersedia': 5,
+        'kamar_terisi': 20,
+        'laporan_bulanan': [
+          {'bulan': 'Januari', 'pendapatan': 2000000, 'penghuni': 18},
+          {'bulan': 'Februari', 'pendapatan': 1800000, 'penghuni': 16},
+        ]
+      };
       setState(() {
         reports = data;
         isLoading = false;
@@ -61,58 +72,163 @@ class _LaporanPageState extends State<LaporanPage> {
         color: Color(0xFFF6F5F3),
         child: isLoading
             ? Center(child: CircularProgressIndicator())
-            : ListView.builder(
-                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-                itemCount: reports.length,
-                itemBuilder: (context, index) {
-                  final report = reports[index];
-                  return Container(
-                    margin: EdgeInsets.only(bottom: 20),
-                    child: Card(
-                      color: Colors.white,
-                      margin: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      elevation: 3,
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Row(
+            : LayoutBuilder(
+                builder: (context, constraints) {
+                  final isSmallScreen = constraints.maxWidth < 400;
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 8 : 32, vertical: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Summary Cards
+                        Row(
                           children: [
-                            CircleAvatar(
-                              backgroundColor: Color(0xFFD1D2CD),
-                              radius: 32,
-                              child: Icon(Icons.report, color: Color(0xFF5A6A73), size: 32),
-                            ),
-                            SizedBox(width: 24),
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    report['title'] ?? 'No Title',
-                                    style: TextStyle(
-                                      fontFamily: 'Roboto',
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF18323A),
-                                    ),
+                              child: Card(
+                                color: Colors.white,
+                                margin: EdgeInsets.only(bottom: 20, right: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                elevation: 3,
+                                child: Padding(
+                                  padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Total Penghuni',
+                                        style: TextStyle(
+                                          fontFamily: 'Roboto',
+                                          fontSize: 14,
+                                          color: Color(0xFF5A6A73),
+                                        ),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        '${reports['total_penghuni'] ?? 0}',
+                                        style: TextStyle(
+                                          fontFamily: 'Roboto',
+                                          fontSize: isSmallScreen ? 18 : 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF18323A),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    report['summary'] ?? 'No Summary',
-                                    style: TextStyle(
-                                      fontFamily: 'Roboto',
-                                      fontSize: 16,
-                                      color: Color(0xFF5A6A73),
-                                    ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Card(
+                                color: Colors.white,
+                                margin: EdgeInsets.only(bottom: 20, left: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                elevation: 3,
+                                child: Padding(
+                                  padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Total Pendapatan',
+                                        style: TextStyle(
+                                          fontFamily: 'Roboto',
+                                          fontSize: 14,
+                                          color: Color(0xFF5A6A73),
+                                        ),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Rp ${reports['total_pendapatan']?.toString().replaceAllMapped(RegExp(r"(\\d{1,3})(?=(\\d{3})+(?!\\d))"), (Match m) => "${m[1]}.")}',
+                                        style: TextStyle(
+                                          fontFamily: 'Roboto',
+                                          fontSize: isSmallScreen ? 16 : 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF18323A),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ),
+                        // Laporan Bulanan
+                        Text(
+                          'Laporan Bulanan',
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF18323A),
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        ...(reports['laporan_bulanan'] as List<dynamic>? ?? []).map((report) {
+                          return Container(
+                            margin: EdgeInsets.only(bottom: 20),
+                            child: Card(
+                              color: Colors.white,
+                              margin: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              elevation: 3,
+                              child: Padding(
+                                padding: EdgeInsets.all(isSmallScreen ? 12 : 24),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: Color(0xFFD1D2CD),
+                                      radius: isSmallScreen ? 24 : 32,
+                                      child: Icon(Icons.bar_chart, color: Color(0xFF5A6A73), size: isSmallScreen ? 24 : 32),
+                                    ),
+                                    SizedBox(width: isSmallScreen ? 12 : 24),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            report['bulan'] ?? 'No Title',
+                                            style: TextStyle(
+                                              fontFamily: 'Roboto',
+                                              fontSize: isSmallScreen ? 15 : 20,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF18323A),
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'Pendapatan: Rp ${report['pendapatan']?.toString().replaceAllMapped(RegExp(r"(\\d{1,3})(?=(\\d{3})+(?!\\d))"), (Match m) => "${m[1]}.")}',
+                                            style: TextStyle(
+                                              fontFamily: 'Roboto',
+                                              fontSize: isSmallScreen ? 13 : 16,
+                                              color: Color(0xFF5A6A73),
+                                            ),
+                                          ),
+                                          Text(
+                                            'Penghuni: ${report['penghuni'] ?? 0}',
+                                            style: TextStyle(
+                                              fontFamily: 'Roboto',
+                                              fontSize: isSmallScreen ? 13 : 16,
+                                              color: Color(0xFF5A6A73),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ],
                     ),
                   );
                 },

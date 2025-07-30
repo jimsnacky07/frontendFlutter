@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'api_service.dart';
+import 'auth_service.dart';
+import 'models.dart';
 
 class PenghuniPage extends StatefulWidget {
   @override
@@ -9,6 +12,7 @@ class PenghuniPage extends StatefulWidget {
 class _PenghuniPageState extends State<PenghuniPage> {
   List<Penghuni> residents = [];
   bool isLoading = true;
+  String? errorMsg;
 
   @override
   void initState() {
@@ -17,27 +21,44 @@ class _PenghuniPageState extends State<PenghuniPage> {
   }
 
   void fetchResidents() async {
+    setState(() {
+      isLoading = true;
+      errorMsg = null;
+    });
     try {
-      final response = await ApiService().get('penghuni');
-      // Asumsi response: { "success": true, "data": [ ... ] } atau { "success": true, "data": { ... } }
-      final data = response['data'];
-      List<Penghuni> parsed;
-      if (data is List) {
-        parsed = data.map((e) => Penghuni.fromJson(e)).toList();
-      } else if (data is Map) {
-        parsed = [Penghuni.fromJson(Map<String, dynamic>.from(data))];
-      } else {
-        parsed = [];
+      final token = await AuthService.getToken();
+      final user = await AuthService.getUser();
+      if (token == null || user == null) {
+        setState(() {
+          isLoading = false;
+          errorMsg = 'Token atau user tidak ditemukan. Silakan login kembali.';
+        });
+        return;
       }
-      setState(() {
-        residents = parsed;
-        isLoading = false;
-      });
+
+      final result = await ApiService.getPenghuniByUserId(token, user['id'].toString());
+      print('API result: ' + result.toString());
+      print('API data: ' + result['data'].toString());
+      if (result['success']) {
+        final data = result['data'];
+        setState(() {
+          residents = data is List
+              ? data.map((e) => Penghuni.fromJson(e)).toList()
+              : [Penghuni.fromJson(data)];
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          isLoading = false;
+          errorMsg = result['message'] ?? 'Gagal memuat data penghuni.';
+        });
+      }
     } catch (e) {
       setState(() {
         isLoading = false;
+        errorMsg = 'Gagal memuat data penghuni.\n' + e.toString();
       });
-      print('Error fetching residents: $e');
+      print('Error fetching residents: ' + e.toString());
     }
   }
 
@@ -57,7 +78,7 @@ class _PenghuniPageState extends State<PenghuniPage> {
           alignment: Alignment.centerLeft,
           padding: EdgeInsets.symmetric(horizontal: 24),
           child: Text(
-            'Penghuni',
+            'Data Penghuni',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -70,212 +91,113 @@ class _PenghuniPageState extends State<PenghuniPage> {
       body: Container(
         color: Color(0xFFF6F5F3),
         child: isLoading
-            ? Center(child: CircularProgressIndicator())
-            : ListView.builder(
-                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-                itemCount: residents.length,
-                itemBuilder: (context, index) {
-                  final resident = residents[index];
-                  return Container(
-                    margin: EdgeInsets.only(bottom: 20),
-                    child: Card(
-                      color: Colors.white,
-                      margin: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      elevation: 3,
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
+            ? Center(
+                child: SpinKitFadingCircle(
+                  color: Color(0xFF5A6A73),
+                  size: 50.0,
+                ),
+              )
+            : errorMsg != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red, size: 60),
+                        SizedBox(height: 16),
+                        Text(errorMsg!,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 18, color: Colors.red)),
+                        SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          icon: Icon(Icons.refresh),
+                          label: Text('Coba Lagi'),
+                          onPressed: fetchResidents,
+                        ),
+                      ],
+                    ),
+                  )
+                : residents.isEmpty
+                    ? Center(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor: Color(0xFFD1D2CD),
-                                  radius: 32,
-                                  child: Icon(Icons.people, color: Color(0xFF5A6A73), size: 32),
-                                ),
-                                SizedBox(width: 24),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        resident.nama,
-                                        style: TextStyle(
-                                          fontFamily: 'Roboto',
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF18323A),
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Text('ID: ${resident.id}'),
-                                      Text('Alamat: ${resident.alamat}'),
-                                      Text('No HP: ${resident.nohp}'),
-                                      Text('Registrasi: ${resident.registrasi}'),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 8),
-                            Text('Kamar:', style: TextStyle(fontWeight: FontWeight.bold)),
-                            Text('  ID: ${resident.kamar.id}'),
-                            Text('  Lantai: ${resident.kamar.lantai}'),
-                            Text('  Kapasitas: ${resident.kamar.kapasitas}'),
-                            Text('  Fasilitas: ${resident.kamar.fasilitas}'),
-                            Text('  Tarif: Rp ${resident.kamar.tarif}'),
-                            Text('  Max Penghuni: ${resident.kamar.maxPenghuni}'),
-                            if (resident.keuangan.isNotEmpty) ...[
-                              SizedBox(height: 8),
-                              Text('Keuangan:', style: TextStyle(fontWeight: FontWeight.bold)),
-                              ...resident.keuangan.map((k) => Padding(
-                                padding: const EdgeInsets.only(left: 8.0, top: 2.0),
-                                child: Text('- ${k.tglBayar}: Rp ${k.bayar} (${k.keterangan})'),
-                              )),
-                            ],
-                            if (resident.tagihan.isNotEmpty) ...[
-                              SizedBox(height: 8),
-                              Text('Tagihan:', style: TextStyle(fontWeight: FontWeight.bold)),
-                              ...resident.tagihan.map((t) => Padding(
-                                padding: const EdgeInsets.only(left: 8.0, top: 2.0),
-                                child: Text('- ${t.bulan} ${t.tahun}: Rp ${t.tagihan} (${t.status})'),
-                              )),
-                            ],
+                            Icon(Icons.people_outline, color: Color(0xFF5A6A73), size: 60),
+                            SizedBox(height: 16),
+                            Text('Belum ada data penghuni',
+                                style: TextStyle(fontSize: 18, color: Color(0xFF5A6A73))),
                           ],
                         ),
-                      ),
-                    ),
+                      )
+            : LayoutBuilder(
+                builder: (context, constraints) {
+                  final isSmallScreen = constraints.maxWidth < 400;
+                  return ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 8 : 32, vertical: 24),
+                    itemCount: residents.length,
+                    itemBuilder: (context, index) {
+                      final resident = residents[index];
+                      return Card(
+                        margin: EdgeInsets.only(bottom: 20),
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        elevation: 3,
+                        child: Padding(
+                          padding: EdgeInsets.all(isSmallScreen ? 12 : 24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                resident.nama,
+                                style: TextStyle(
+                                  fontFamily: 'Roboto',
+                                  fontSize: isSmallScreen ? 16 : 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF18323A),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 12),
+                              _buildInfoRow(Icons.person_pin_circle_outlined, resident.alamat, isSmallScreen),
+                              _buildInfoRow(Icons.phone_iphone_outlined, resident.nohp, isSmallScreen),
+                              _buildInfoRow(Icons.calendar_today_outlined, 'Registrasi: ${resident.registrasi}', isSmallScreen),
+                              if (resident.kamar != null)
+                                _buildInfoRow(Icons.king_bed_outlined, 'Kamar: ${resident.kamar!.id} (Lantai ${resident.kamar!.lantai})', isSmallScreen),
+                              Divider(height: 32),
+                              if (resident.keuangan.isNotEmpty) ...[
+                                Text('Riwayat Pembayaran:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: isSmallScreen ? 13 : 16)),
+                                SizedBox(height: 8),
+                                ...resident.keuangan.map((k) => Text('- ${k.tglBayar}: Rp ${k.bayar} (${k.keterangan})', style: TextStyle(fontSize: isSmallScreen ? 12 : 15))),
+                              ],
+                              if (resident.tagihan.isNotEmpty) ...[
+                                SizedBox(height: 16),
+                                Text('Tagihan:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: isSmallScreen ? 13 : 16)),
+                                SizedBox(height: 8),
+                                ...resident.tagihan.map((t) => Text('- ${t.bulan} ${t.tahun}: Rp ${t.tagihan} (${t.status})', style: TextStyle(fontSize: isSmallScreen ? 12 : 15))),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
       ),
     );
   }
-}
 
-// Tambahkan model data sesuai struktur API baru
-class Kamar {
-  final String id;
-  final int lantai;
-  final String kapasitas;
-  final String fasilitas;
-  final int tarif;
-  final int maxPenghuni;
-
-  Kamar({
-    required this.id,
-    required this.lantai,
-    required this.kapasitas,
-    required this.fasilitas,
-    required this.tarif,
-    required this.maxPenghuni,
-  });
-
-  factory Kamar.fromJson(Map<String, dynamic> json) {
-    return Kamar(
-      id: json['id'] ?? '',
-      lantai: json['lantai'] ?? 0,
-      kapasitas: json['kapasitas'] ?? '',
-      fasilitas: json['fasilitas'] ?? '',
-      tarif: json['tarif'] ?? 0,
-      maxPenghuni: json['max_penghuni'] ?? 0,
-    );
-  }
-}
-
-class Keuangan {
-  final String id;
-  final String idPenghuni;
-  final String tglBayar;
-  final int bayar;
-  final String keterangan;
-
-  Keuangan({
-    required this.id,
-    required this.idPenghuni,
-    required this.tglBayar,
-    required this.bayar,
-    required this.keterangan,
-  });
-
-  factory Keuangan.fromJson(Map<String, dynamic> json) {
-    return Keuangan(
-      id: json['id'] ?? '',
-      idPenghuni: json['id_penghuni'] ?? '',
-      tglBayar: json['tgl_bayar'] ?? '',
-      bayar: json['bayar'] ?? 0,
-      keterangan: json['keterangan'] ?? '',
-    );
-  }
-}
-
-class Tagihan {
-  final int id;
-  final String idPenghuni;
-  final String bulan;
-  final String tahun;
-  final String tagihan;
-  final String status;
-  final String tanggal;
-
-  Tagihan({
-    required this.id,
-    required this.idPenghuni,
-    required this.bulan,
-    required this.tahun,
-    required this.tagihan,
-    required this.status,
-    required this.tanggal,
-  });
-
-  factory Tagihan.fromJson(Map<String, dynamic> json) {
-    return Tagihan(
-      id: json['id'] ?? 0,
-      idPenghuni: json['id_penghuni'] ?? '',
-      bulan: json['bulan'] ?? '',
-      tahun: json['tahun'] ?? '',
-      tagihan: json['tagihan'] ?? '',
-      status: json['status'] ?? '',
-      tanggal: json['tanggal'] ?? '',
-    );
-  }
-}
-
-class Penghuni {
-  final String id;
-  final String nama;
-  final String alamat;
-  final String nohp;
-  final String registrasi;
-  final Kamar kamar;
-  final List<Keuangan> keuangan;
-  final List<Tagihan> tagihan;
-
-  Penghuni({
-    required this.id,
-    required this.nama,
-    required this.alamat,
-    required this.nohp,
-    required this.registrasi,
-    required this.kamar,
-    required this.keuangan,
-    required this.tagihan,
-  });
-
-  factory Penghuni.fromJson(Map<String, dynamic> json) {
-    return Penghuni(
-      id: json['id'] ?? '',
-      nama: json['nama'] ?? '',
-      alamat: json['alamat'] ?? '',
-      nohp: json['nohp'] ?? '',
-      registrasi: json['registrasi'] ?? '',
-      kamar: Kamar.fromJson(json['kamar'] ?? {}),
-      keuangan: (json['keuangan'] as List<dynamic>? ?? []).map((e) => Keuangan.fromJson(e)).toList(),
-      tagihan: (json['tagihan'] as List<dynamic>? ?? []).map((e) => Tagihan.fromJson(e)).toList(),
+  Widget _buildInfoRow(IconData icon, String text, bool isSmallScreen) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, color: Color(0xFF5A6A73), size: isSmallScreen ? 16 : 18),
+          SizedBox(width: 12),
+          Expanded(child: Text(text, style: TextStyle(fontSize: isSmallScreen ? 13 : 15))),
+        ],
+      ),
     );
   }
 }

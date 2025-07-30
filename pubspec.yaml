@@ -1,5 +1,5 @@
-name: flutter_apk
-description: "A new Flutter project."
+name: kos_ucup
+description: "Aplikasi manajemen kos Ucup."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -35,6 +35,13 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   http: ^1.4.0
+  flutter_spinkit: ^5.2.0
+  shared_preferences: ^2.2.2
+  url_launcher: ^6.1.7
+  image_picker: ^1.0.7  # Re-enabled for photo upload feature
+  dio: ^5.4.0
+  local_auth: ^2.1.8
+  local_auth_android: ^1.0.39
 
 dev_dependencies:
   flutter_test:
@@ -46,6 +53,12 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_icons:
+  android: true
+  ios: false
+  image_path: "asset/kos.jpg"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

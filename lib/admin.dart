@@ -18,9 +18,13 @@ class _AdminPageState extends State<AdminPage> {
 
   void fetchAdmins() async {
     try {
-      final data = await ApiService().get('admin');
+      // Simulasi data admin karena endpoint belum dibuat
+      await Future.delayed(Duration(seconds: 1));
       setState(() {
-        admins = data;
+        admins = [
+          {'name': 'Admin 1', 'email': 'admin1@example.com'},
+          {'name': 'Admin 2', 'email': 'admin2@example.com'},
+        ];
         isLoading = false;
       });
     } catch (e) {
